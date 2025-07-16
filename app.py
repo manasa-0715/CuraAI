@@ -1,6 +1,3 @@
-
-# PyTorch-free CuraAI: Gemini + STT + TTS
-
 import os
 import time
 import streamlit as st
@@ -12,6 +9,8 @@ from gtts import gTTS
 from IPython.display import Audio
 from pydub import AudioSegment
 import urllib.request
+import uuid
+import re
 
 PDF_PATH = "Gale Encyclopedia of Medicine.pdf"
 PDF_URL = "https://staibabussalamsula.ac.id/wp-content/uploads/2024/06/The-Gale-Encyclopedia-of-Medicine-3rd-Edition-staibabussalamsula.ac_.id_.pdf"
@@ -86,12 +85,56 @@ def emergency_bot():
         return response.text.strip()
     return ask
 
-# Text-to-Speech
 def speak_text(text):
     try:
-        tts = gTTS(text=text, lang='en')
-        tts.save("response.mp3")
-        st.audio("response.mp3", format="audio/mp3")
+        import tempfile
+        from pydub import AudioSegment
+
+        # ✅ Clean the text
+        text = text.replace('\x00', '')
+        clean_text = ''.join(c for c in text if c.isprintable())
+        clean_text = clean_text.replace('\n', ' ').replace('\r', ' ')
+        clean_text = re.sub(r'\s+', ' ', clean_text)
+        clean_text = re.sub(r'[^\x00-\x7F]+', '', clean_text)
+        clean_text = re.sub(r'[^\w\s.,?!]', '', clean_text)
+
+        if not clean_text.strip():
+            clean_text = "Sorry, the response could not be read aloud."
+
+        # ✅ Split into smaller chunks (~100 words max)
+        sentences = re.split(r'(?<=[.?!])\s+', clean_text)
+        chunks = []
+        chunk = ""
+
+        for sentence in sentences:
+            if len(chunk + sentence) < 400:
+                chunk += sentence + " "
+            else:
+                chunks.append(chunk.strip())
+                chunk = sentence + " "
+        if chunk:
+            chunks.append(chunk.strip())
+
+        # ✅ Generate audio for each chunk and merge
+        combined = AudioSegment.empty()
+        for i, part in enumerate(chunks):
+            tts = gTTS(text=part, lang='en')
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as temp_file:
+                temp_path = temp_file.name
+                tts.save(temp_path)
+                segment = AudioSegment.from_mp3(temp_path)
+                combined += segment
+                os.remove(temp_path)
+
+        # ✅ Save final audio
+        output_file = "response.mp3"
+        if os.path.exists(output_file):
+            os.remove(output_file)
+        combined.export(output_file, format="mp3")
+
+        # ✅ Play it
+        st.audio(output_file, format="audio/mp3")
+
     except Exception as e:
         st.error(f"TTS failed: {e}")
 
@@ -115,7 +158,7 @@ def show_home():
         </div>
 
         <div style='margin-top: 30px; font-size: 18px;'>
-            <p>✅ <b>WHY USE CuraAI ? </b></p>
+            <p><b>WHY USE CuraAI ? </b></p>
             <p>📚 Built on real medical knowledge from trusted sources.</p>
             <p>⚡ Fast and available anytime.</p>
             <p>❤️ Supports life-saving decisions in emergencies.</p>
@@ -155,6 +198,15 @@ def show_chatbot():
         st.success(answer)
         speak_text(answer)
 
+        # 🔁 Clean up temp audio files after use
+        if os.path.exists("temp_audio.wav"):
+            os.remove("temp_audio.wav")
+        if os.path.exists("temp_audio_input"):
+            os.remove("temp_audio_input")
+
+
+    
+
 def show_emergency():
     st.title("Emergency Assistant")
     input_method = st.radio("Choose input method:", ["Type", "Upload Audio File"])
@@ -182,6 +234,12 @@ def show_emergency():
         answer = emergency_bot()(truncate_text(emergency_input))
         st.warning(answer)
         speak_text(answer)
+
+        # ✅ Clean up temp audio files
+        if os.path.exists("temp_audio.wav"):
+            os.remove("temp_audio.wav")
+        if os.path.exists("temp_audio_input"):
+            os.remove("temp_audio_input")
 
 # Main
 def main():
