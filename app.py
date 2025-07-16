@@ -19,11 +19,11 @@ if not os.path.exists(PDF_PATH):
     try:
         urllib.request.urlretrieve(PDF_URL, PDF_PATH)
     except Exception as e:
-        pass  
+        pass
 
 
 # Configure Gemini API
-genai.configure(api_key="Gemini api key")  # Replace with your Gemini API key
+genai.configure(api_key=st.secrets["GEMINI_API_KEY"])  # Replace with your Gemini API key
 
 # Prompt Templates
 qa_prompt_template = """
@@ -65,7 +65,7 @@ def truncate_text(text, max_tokens=512):
 def set_custom_prompt(template):
     return PromptTemplate(template=template, input_variables=["question"])
 
-# Gemini-powered QA Bot 
+# Gemini-powered QA Bot
 def qa_bot():
     prompt = set_custom_prompt(qa_prompt_template)
     def ask(query):
