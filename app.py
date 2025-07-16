@@ -6,8 +6,8 @@ from langchain.prompts import PromptTemplate
 from googletrans import Translator
 import speech_recognition as sr
 from gtts import gTTS
+import tempfile
 from IPython.display import Audio
-from pydub import AudioSegment
 import urllib.request
 import uuid
 import re
@@ -87,10 +87,7 @@ def emergency_bot():
 
 def speak_text(text):
     try:
-        import tempfile
-        from pydub import AudioSegment
-
-        # Clean the text
+        # ✅ Clean the text
         text = text.replace('\x00', '')
         clean_text = ''.join(c for c in text if c.isprintable())
         clean_text = clean_text.replace('\n', ' ').replace('\r', ' ')
@@ -101,42 +98,18 @@ def speak_text(text):
         if not clean_text.strip():
             clean_text = "Sorry, the response could not be read aloud."
 
-        # Split into smaller chunks (~100 words max)
-        sentences = re.split(r'(?<=[.?!])\s+', clean_text)
-        chunks = []
-        chunk = ""
+        # ✅ Generate and save TTS using gTTS
+        tts = gTTS(text=clean_text, lang='en')
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as temp_file:
+            temp_path = temp_file.name
+            tts.save(temp_path)
 
-        for sentence in sentences:
-            if len(chunk + sentence) < 400:
-                chunk += sentence + " "
-            else:
-                chunks.append(chunk.strip())
-                chunk = sentence + " "
-        if chunk:
-            chunks.append(chunk.strip())
-
-        # Generate audio for each chunk and merge
-        combined = AudioSegment.empty()
-        for i, part in enumerate(chunks):
-            tts = gTTS(text=part, lang='en')
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as temp_file:
-                temp_path = temp_file.name
-                tts.save(temp_path)
-                segment = AudioSegment.from_mp3(temp_path)
-                combined += segment
-                os.remove(temp_path)
-
-        # Save final audio
-        output_file = "response.mp3"
-        if os.path.exists(output_file):
-            os.remove(output_file)
-        combined.export(output_file, format="mp3")
-
-        # Play it
-        st.audio(output_file, format="audio/mp3")
+        # ✅ Play in Streamlit
+        st.audio(temp_path, format="audio/mp3")
 
     except Exception as e:
         st.error(f"TTS failed: {e}")
+
 
 # UI Pages
 def show_home():
@@ -181,10 +154,11 @@ def show_chatbot():
         uploaded_file = st.file_uploader("Upload audio file", type=["wav", "mp3", "m4a"])
         if uploaded_file is not None:
             recognizer = sr.Recognizer()
-            with open("temp_audio_input", "wb") as f:
-                f.write(uploaded_file.getbuffer())
-            audio = AudioSegment.from_file("temp_audio_input")
-            audio.export("temp_audio.wav", format="wav")
+
+            # Save uploaded audio file directly as temp_audio.wav
+            with open("temp_audio.wav", "wb") as f_out:
+                f_out.write(uploaded_file.getbuffer())
+
             with sr.AudioFile("temp_audio.wav") as source:
                 audio_data = recognizer.record(source)
                 try:
@@ -198,12 +172,9 @@ def show_chatbot():
         st.success(answer)
         speak_text(answer)
 
-        # Clean up temp audio files after use
+        # Clean up temp audio file
         if os.path.exists("temp_audio.wav"):
             os.remove("temp_audio.wav")
-        if os.path.exists("temp_audio_input"):
-            os.remove("temp_audio_input")
-
 
 
 
@@ -218,28 +189,25 @@ def show_emergency():
         uploaded_file = st.file_uploader("Upload emergency description audio", type=["wav", "mp3", "m4a"])
         if uploaded_file is not None:
             recognizer = sr.Recognizer()
-            with open("temp_audio_input", "wb") as f:
+            with open("temp_audio.wav", "wb") as f:
                 f.write(uploaded_file.getbuffer())
-            audio = AudioSegment.from_file("temp_audio_input")
-            audio.export("temp_audio.wav", format="wav")
-            with sr.AudioFile("temp_audio.wav") as source:
-                audio_data = recognizer.record(source)
-                try:
+            try:
+                with sr.AudioFile("temp_audio.wav") as source:
+                    audio_data = recognizer.record(source)
                     emergency_input = recognizer.recognize_google(audio_data)
                     st.success(f"You said: {emergency_input}")
-                except Exception as e:
-                    st.error(f"Speech recognition failed: {e}")
+            except Exception as e:
+                st.error(f"Speech recognition failed: {e}")
 
     if emergency_input and st.button("Get Instructions"):
         answer = emergency_bot()(truncate_text(emergency_input))
         st.warning(answer)
         speak_text(answer)
 
-        # Clean up temp audio files
+        # Clean up temp audio file
         if os.path.exists("temp_audio.wav"):
             os.remove("temp_audio.wav")
-        if os.path.exists("temp_audio_input"):
-            os.remove("temp_audio_input")
+
 
 # Main
 def main():
