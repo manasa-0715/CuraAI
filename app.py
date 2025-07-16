@@ -19,11 +19,11 @@ if not os.path.exists(PDF_PATH):
     try:
         urllib.request.urlretrieve(PDF_URL, PDF_PATH)
     except Exception as e:
-        pass  # Optionally log to a file or ignore silently
+        pass  
 
 
 # Configure Gemini API
-genai.configure(api_key="AIzaSyB5v0OnINlqIOIdwy28KghSXFbqSt0o0ok")  # 🔁 Replace with your Gemini API key 
+genai.configure(api_key="Gemini api key")  # Replace with your Gemini API key
 
 # Prompt Templates
 qa_prompt_template = """
@@ -65,7 +65,7 @@ def truncate_text(text, max_tokens=512):
 def set_custom_prompt(template):
     return PromptTemplate(template=template, input_variables=["question"])
 
-# Gemini-powered QA Bot (no PyTorch)
+# Gemini-powered QA Bot 
 def qa_bot():
     prompt = set_custom_prompt(qa_prompt_template)
     def ask(query):
@@ -90,7 +90,7 @@ def speak_text(text):
         import tempfile
         from pydub import AudioSegment
 
-        # ✅ Clean the text
+        # Clean the text
         text = text.replace('\x00', '')
         clean_text = ''.join(c for c in text if c.isprintable())
         clean_text = clean_text.replace('\n', ' ').replace('\r', ' ')
@@ -101,7 +101,7 @@ def speak_text(text):
         if not clean_text.strip():
             clean_text = "Sorry, the response could not be read aloud."
 
-        # ✅ Split into smaller chunks (~100 words max)
+        # Split into smaller chunks (~100 words max)
         sentences = re.split(r'(?<=[.?!])\s+', clean_text)
         chunks = []
         chunk = ""
@@ -115,7 +115,7 @@ def speak_text(text):
         if chunk:
             chunks.append(chunk.strip())
 
-        # ✅ Generate audio for each chunk and merge
+        # Generate audio for each chunk and merge
         combined = AudioSegment.empty()
         for i, part in enumerate(chunks):
             tts = gTTS(text=part, lang='en')
@@ -126,13 +126,13 @@ def speak_text(text):
                 combined += segment
                 os.remove(temp_path)
 
-        # ✅ Save final audio
+        # Save final audio
         output_file = "response.mp3"
         if os.path.exists(output_file):
             os.remove(output_file)
         combined.export(output_file, format="mp3")
 
-        # ✅ Play it
+        # Play it
         st.audio(output_file, format="audio/mp3")
 
     except Exception as e:
@@ -198,14 +198,14 @@ def show_chatbot():
         st.success(answer)
         speak_text(answer)
 
-        # 🔁 Clean up temp audio files after use
+        # Clean up temp audio files after use
         if os.path.exists("temp_audio.wav"):
             os.remove("temp_audio.wav")
         if os.path.exists("temp_audio_input"):
             os.remove("temp_audio_input")
 
 
-    
+
 
 def show_emergency():
     st.title("Emergency Assistant")
@@ -235,7 +235,7 @@ def show_emergency():
         st.warning(answer)
         speak_text(answer)
 
-        # ✅ Clean up temp audio files
+        # Clean up temp audio files
         if os.path.exists("temp_audio.wav"):
             os.remove("temp_audio.wav")
         if os.path.exists("temp_audio_input"):
