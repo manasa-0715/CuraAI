@@ -151,32 +151,31 @@ def show_chatbot():
     if input_method == "Type":
         user_input = st.text_input("Ask a medical question")
     else:
-        uploaded_file = st.file_uploader("Upload audio file", type=["wav", "mp3", "m4a"])
+        uploaded_file = st.file_uploader("Upload audio file", type=["wav"])
         if uploaded_file is not None:
             recognizer = sr.Recognizer()
+            try:
+                # ✅ Save uploaded WAV file directly
+                with open("temp_audio.wav", "wb") as f:
+                    f.write(uploaded_file.getbuffer())
 
-            # Save uploaded audio file directly as temp_audio.wav
-            with open("temp_audio.wav", "wb") as f_out:
-                f_out.write(uploaded_file.getbuffer())
-
-            with sr.AudioFile("temp_audio.wav") as source:
-                audio_data = recognizer.record(source)
-                try:
+                # ✅ Load and transcribe the audio
+                with sr.AudioFile("temp_audio.wav") as source:
+                    audio_data = recognizer.record(source)
                     user_input = recognizer.recognize_google(audio_data)
                     st.success(f"You said: {user_input}")
-                except Exception as e:
-                    st.error(f"Speech recognition failed: {e}")
+
+                # ✅ Clean up
+                if os.path.exists("temp_audio.wav"):
+                    os.remove("temp_audio.wav")
+
+            except Exception as e:
+                st.error(f"Speech recognition failed: {e}")
 
     if user_input and st.button("Ask"):
         answer = qa_bot()(truncate_text(user_input))
         st.success(answer)
         speak_text(answer)
-
-        # Clean up temp audio file
-        if os.path.exists("temp_audio.wav"):
-            os.remove("temp_audio.wav")
-
-
 
 def show_emergency():
     st.title("Emergency Assistant")
@@ -186,27 +185,32 @@ def show_emergency():
     if input_method == "Type":
         emergency_input = st.text_input("Describe the emergency")
     else:
-        uploaded_file = st.file_uploader("Upload emergency description audio", type=["wav", "mp3", "m4a"])
+        uploaded_file = st.file_uploader("Upload emergency description audio", type=["wav"])
         if uploaded_file is not None:
             recognizer = sr.Recognizer()
-            with open("temp_audio.wav", "wb") as f:
-                f.write(uploaded_file.getbuffer())
             try:
+                # ✅ Save as a WAV file (since no conversion is done)
+                with open("temp_audio.wav", "wb") as f:
+                    f.write(uploaded_file.getbuffer())
+
                 with sr.AudioFile("temp_audio.wav") as source:
                     audio_data = recognizer.record(source)
                     emergency_input = recognizer.recognize_google(audio_data)
                     st.success(f"You said: {emergency_input}")
+
             except Exception as e:
                 st.error(f"Speech recognition failed: {e}")
+
+            finally:
+                if os.path.exists("temp_audio.wav"):
+                    os.remove("temp_audio.wav")
 
     if emergency_input and st.button("Get Instructions"):
         answer = emergency_bot()(truncate_text(emergency_input))
         st.warning(answer)
         speak_text(answer)
 
-        # Clean up temp audio file
-        if os.path.exists("temp_audio.wav"):
-            os.remove("temp_audio.wav")
+
 
 
 # Main
