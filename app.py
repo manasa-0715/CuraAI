@@ -11,6 +11,17 @@ import speech_recognition as sr
 from gtts import gTTS
 from IPython.display import Audio
 from pydub import AudioSegment
+import urllib.request
+
+PDF_PATH = "Gale Encyclopedia of Medicine.pdf"
+PDF_URL = "https://staibabussalamsula.ac.id/wp-content/uploads/2024/06/The-Gale-Encyclopedia-of-Medicine-3rd-Edition-staibabussalamsula.ac_.id_.pdf"
+
+if not os.path.exists(PDF_PATH):
+    try:
+        urllib.request.urlretrieve(PDF_URL, PDF_PATH)
+    except Exception as e:
+        pass  # Optionally log to a file or ignore silently
+
 
 # Configure Gemini API
 genai.configure(api_key="AIzaSyB5v0OnINlqIOIdwy28KghSXFbqSt0o0ok")  # 🔁 Replace with your Gemini API key 
@@ -112,7 +123,7 @@ def show_home():
 
         <br><br>
         <div style='text-align:center; font-size: 13px; color: grey;'>
-            🩺 Powered by Gemini | Developed by Team CuraAI
+            🩺 Powered by Gemini | Developed by Team 404 team not found
         </div>
     """, unsafe_allow_html=True)
 
