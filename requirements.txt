@@ -6,3 +6,4 @@ SpeechRecognition
 gTTS
 pydub
 ipython
+pydantic==1.10.13
